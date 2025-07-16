@@ -80,18 +80,12 @@ const registerUser = async (req, res) => {
     }
 }
 
-// Hardcoded admin credentials
-const ADMIN_EMAIL = 'thetee545@gmail.com';
-const ADMIN_PASSWORD = 'Thetee@123#';
 // Route for admin login
 const adminLogin = async (req, res) => {
     try {
         const {email,password} = req.body
         // Debug logs to help diagnose credential issues
-        console.log('ADMIN EMAIL:', ADMIN_EMAIL, 'ADMIN PASS:', ADMIN_PASSWORD);
-        console.log('REQ EMAIL:', email, 'REQ PASS:', password);
-
-        if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+ if (email === 'thetee545@gmail.com' && password === 'Thetee@123#'){
             const token = jwt.sign(email+password,process.env.JWT_SECRET);
             res.json({success:true,token})
         } else {

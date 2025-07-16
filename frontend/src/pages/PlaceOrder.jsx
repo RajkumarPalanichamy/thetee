@@ -104,7 +104,7 @@ const PlaceOrder = () => {
 
     const initPay = (order) => {
         const options = {
-            key: 'rzp_live_VudEQey2JX5P78',
+            key: 'rzp_live_YzPG4x7vsi9pK0',
             amount: order.amount,
             currency: order.currency,
             name: 'Order Payment',

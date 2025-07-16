@@ -87,6 +87,9 @@ const List = ({ token }) => {
   const [editStockQuantities, setEditStockQuantities] = useState({});
   const [editManagingColor, setEditManagingColor] = useState(null);
 
+  // Add state for new images to be added
+  const [newEditProductImages, setNewEditProductImages] = useState([]);
+
   const fetchList = async () => {
     try {
       const response = await axios.get(backendUrl + '/api/product/list')
@@ -337,7 +340,7 @@ const List = ({ token }) => {
     }));
   };
   const addEditColor = () => {
-    const selected = COLOR_OPTIONS.find(c => c.name === editColorNameInput);
+    const selected = COLOR_OPTIONS.find(c => c.name === editColorNameInput) || { name: editColorNameInput, value: editColorValueInput };
     if (
       selected &&
       editColors.length < 7 &&
@@ -346,8 +349,8 @@ const List = ({ token }) => {
       setEditColors([...editColors, selected]);
       setEditColorNameInput("");
       setEditColorValueInput(COLOR_OPTIONS[0].value);
-      setEditColorImageFiles({ ...editColorImageFiles, [selected.name]: [null, null, null, null] });
-      setEditManagingColor(selected.name);
+      setEditColorImageFiles({ ...editColorImageFiles, [selected.name]: [null] });
+      setEditManagingColor(selected.name); // <-- auto-select new color
     }
   };
   const removeEditColor = (colorToRemove) => {
@@ -357,6 +360,30 @@ const List = ({ token }) => {
     setEditColorImageFiles(newColorImageFiles);
     const remaining = editColors.filter(color => color.name !== colorToRemove);
     setEditManagingColor(remaining.length > 0 ? remaining[0].name : null);
+  };
+
+  // Handler to add a new image upload field
+  const addNewEditProductImageField = () => {
+    setNewEditProductImages(prev => [...prev, null]);
+  };
+  // Handler to change a new image
+  const handleNewEditProductImageChange = (index, file) => {
+    setNewEditProductImages(prev => {
+      const updated = [...prev];
+      updated[index] = file;
+      return updated;
+    });
+  };
+  // Handler to remove a new image field
+  const removeNewEditProductImageField = (index) => {
+    setNewEditProductImages(prev => prev.filter((_, i) => i !== index));
+  };
+  // Handler to delete an existing image
+  const handleDeleteExistingProductImage = (imgIdx) => {
+    setEditingProduct(prev => ({
+      ...prev,
+      image: prev.image.filter((_, i) => i !== imgIdx)
+    }));
   };
 
   // 4. Update handleEditProductSubmit to include sizes, colors, stock, and color images
@@ -398,6 +425,10 @@ const List = ({ token }) => {
       // Main product images
       editProductImages.forEach((file, idx) => {
         if (file) formData.append('images', file);
+      });
+      // Append all newEditProductImages to formData as 'images'
+      newEditProductImages.forEach((img) => {
+        if (img) formData.append('images', img);
       });
       const response = await axios.post(
         backendUrl + '/api/product/update',
@@ -739,44 +770,38 @@ const List = ({ token }) => {
               <div>
                 <label className='block text-sm mb-1'>Colors</label>
                 <div className='flex flex-wrap gap-2 mb-2'>
-                  {editColors.map((color, index) => (
-                    <span
-                      key={color.name}
-                      className={`text-sm px-2 py-0.5 rounded flex items-center gap-1 ${
-                        editManagingColor === color.name ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                      }`}
-                      onClick={() => setEditManagingColor(color.name)}
-                    >
-                      {color.name}
-                      <button
-                        type='button'
-                        onClick={() => removeEditColor(color.name)}
-                        className='text-red-500 text-xs'
-                        title='Remove Color'
+                  {editColors.map((color, index) => {
+                    // Find the image for this color: check editColorImageFiles first, then editingProduct?.colors
+                    let imgSrc = null;
+                    if (editColorImageFiles[color.name] && editColorImageFiles[color.name][0]) {
+                      imgSrc = URL.createObjectURL(editColorImageFiles[color.name][0]);
+                    } else {
+                      const prodColor = editingProduct?.colors?.find(c => c.name === color.name);
+                      if (prodColor && prodColor.image && prodColor.image[0]) {
+                        imgSrc = prodColor.image[0];
+                      }
+                    }
+                    return (
+                      <span
+                        key={color.name}
+                        className={`text-sm px-2 py-0.5 rounded flex items-center gap-1 ${editManagingColor === color.name ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}
+                        onClick={() => setEditManagingColor(color.name)}
                       >
-                        X
-                      </button>
-                    </span>
-                  ))}
+                        {imgSrc && <img src={imgSrc} alt='' className='w-6 h-6 object-cover rounded mr-1' />}
+                        {color.name}
+                        <button
+                          type='button'
+                          onClick={e => { e.stopPropagation(); removeEditColor(color.name); }}
+                          className='text-red-500 text-xs'
+                          title='Remove Color'
+                        >
+                          X
+                        </button>
+                      </span>
+                    );
+                  })}
                 </div>
-                <div className='flex gap-2'>
-                  <input
-                    type='text'
-                    value={editColorNameInput}
-                    onChange={e => setEditColorNameInput(e.target.value)}
-                    className='w-full border px-2 py-1 rounded'
-                    placeholder='Add new color'
-                  />
-                  <button
-                    type='button'
-                    onClick={addEditColor}
-                    className='bg-green-600 text-white px-2 py-1 rounded text-sm'
-                    disabled={!editColorNameInput || editColors.some(c => c.name === editColorNameInput) || editColors.length >= 7}
-                  >
-                    Add Color
-                  </button>
-                </div>
-                <p className='text-xs text-gray-600'>Select or add colors for this product.</p>
+                <p className='text-xs text-gray-600'>Edit or remove colors for this product.</p>
               </div>
 
               {/* Stock Management */}
@@ -804,58 +829,13 @@ const List = ({ token }) => {
                 </div>
               </div>
 
-              {/* Color Images Section */}
-              <div>
-                <label className='block text-sm mb-1'>Color Images</label>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
-                  {editColors.map(color => (
-                    <div key={color.name} className='flex flex-col gap-1'>
-                      <h3 className='text-sm font-medium'>{color.name}</h3>
-                      <div className='flex gap-2 flex-wrap'>
-                        {[0, 1, 2, 3].map(idx => (
-                          <input
-                            key={idx}
-                            type='file'
-                            accept='image/*'
-                            onChange={e => handleEditColorImageFileChange(color.name, idx, e.target.files[0])}
-                            className='w-full text-xs'
-                          />
-                        ))}
-                      </div>
-                      <div className='grid grid-cols-2 gap-1 mt-2'>
-                        {editColorImageFiles[color.name]?.map((file, idx) => (
-                          <img 
-                            key={idx}
-                            src={file ? URL.createObjectURL(file) : editingProduct?.colors?.find(c => c.name === color.name)?.image?.[idx] || ''} 
-                            alt={`${color.name} image ${idx + 1}`}
-                            className='w-16 h-16 object-cover border rounded'
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Main Product Images Section */}
               <div>
-                <label className='block text-sm mb-1'>Product Images (Upload to replace existing)</label>
-                <div className='grid grid-cols-2 md:grid-cols-4 gap-2'>
-                  {[0, 1, 2, 3].map(idx => (
-                    <div key={idx} className='flex flex-col gap-1'>
-                      <input
-                        type='file'
-                        accept='image/*'
-                        onChange={e => handleEditProductImageChange(idx, e.target.files[0])}
-                        className='w-full text-xs'
-                      />
-                      {editingProduct?.image[idx] && (
-                        <img 
-                          src={editingProduct.image[idx]} 
-                          alt={`Current image ${idx + 1}`}
-                          className='w-full h-16 object-cover border rounded'
-                        />
-                      )}
+                <label className='block text-sm mb-1'>Product Images</label>
+                <div className='flex gap-2 flex-wrap items-center'>
+                  {editingProduct?.image?.map((img, idx) => (
+                    <div key={idx} className='w-20 h-20 object-cover border rounded overflow-hidden'>
+                      <img src={img} alt={`Current image ${idx + 1}`} className='w-full h-full object-cover' />
                     </div>
                   ))}
                 </div>

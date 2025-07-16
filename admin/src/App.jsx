@@ -14,16 +14,51 @@ export const currency = '₹'
 
 const App = () => {
 
-  const [token, setToken] = useState(localStorage.getItem('token')?localStorage.getItem('token'):'');
+  const [token, setToken] = useState(localStorage.getItem('token') ? localStorage.getItem('token') : '');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isValid, setIsValid] = useState(false);
 
-  useEffect(()=>{
-    localStorage.setItem('token',token)
-  },[token])
+  useEffect(() => {
+    localStorage.setItem('token', token);
+    if (token === '') {
+      setIsValid(false);
+      setIsLoading(false);
+      return;
+    }
+    // Verify token with backend
+    const verifyToken = async () => {
+      try {
+        const response = await fetch(backendUrl + '/api/order/list', {
+          method: 'POST',
+          headers: { 'token': token },
+        });
+        const data = await response.json();
+        if (data.success) {
+          setIsValid(true);
+        } else {
+          setIsValid(false);
+          setToken('');
+          localStorage.removeItem('token');
+        }
+      } catch (err) {
+        setIsValid(false);
+        setToken('');
+        localStorage.removeItem('token');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    verifyToken();
+  }, [token]);
+
+  if (isLoading) {
+    return <div className='flex items-center justify-center min-h-screen'>Loading...</div>;
+  }
 
   return (
     <div className='bg-gray-50 min-h-screen'>
       <ToastContainer />
-      {token === ""
+      {!isValid
         ? <Login setToken={setToken} />
         : <>
           <Navbar setToken={setToken} />

@@ -63,6 +63,28 @@ const Add = ({token}) => {
    const [colorImageFiles, setColorImageFiles] = useState({});
    const [stockQuantities, setStockQuantities] = useState({}); // New state for stock quantities
 
+   // Add state for product images
+   // const [productImages, setProductImages] = useState([null]); // Removed
+
+   // Handler for changing a product image // Removed
+   // const handleProductImageChange = (index, file) => { // Removed
+   //   setProductImages(prev => { // Removed
+   //     const updated = [...prev]; // Removed
+   //     updated[index] = file; // Removed
+   //     return updated; // Removed
+   //   }); // Removed
+   // }; // Removed
+
+   // Handler to add a new image field // Removed
+   // const addProductImageField = () => { // Removed
+   //   setProductImages(prev => [...prev, null]); // Removed
+   // }; // Removed
+
+   // Handler to remove an image field // Removed
+   // const removeProductImageField = (index) => { // Removed
+   //   setProductImages(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev); // Removed
+   // }; // Removed
+
    // State for loading and progress
    const [loading, setLoading] = useState(false);
    const [uploadProgress, setUploadProgress] = useState(0);
@@ -70,7 +92,7 @@ const Add = ({token}) => {
    const handleColorImageFileChange = (color, index, file) => {
     const newColorImageFiles = { ...colorImageFiles };
     if (!newColorImageFiles[color]) {
-        newColorImageFiles[color] = [null, null, null, null];
+        newColorImageFiles[color] = [null]; // Initialize with one null image
     }
     newColorImageFiles[color][index] = file;
     setColorImageFiles(newColorImageFiles);
@@ -86,7 +108,7 @@ const Add = ({token}) => {
        setColors([...colors, selected]);
        setColorNameInput("");
        setColorValueInput(COLOR_OPTIONS[0].value);
-       setColorImageFiles({ ...colorImageFiles, [selected.name]: [null, null, null, null] });
+       setColorImageFiles({ ...colorImageFiles, [selected.name]: [null] }); // Initialize with one null image
        setManagingColor(selected.name);
      } else if (colors.length >= 7) {
         toast.error("You can add up to 7 colors.");
@@ -105,6 +127,25 @@ const Add = ({token}) => {
         const remaining = colors.filter(color => color.name !== colorToRemove);
         setManagingColor(remaining.length > 0 ? remaining[0].name : null);
      }
+   };
+
+   // Add handler to add a new image field for a color
+   const addColorImageField = (color) => {
+     setColorImageFiles(prev => {
+       const updated = { ...prev };
+       updated[color] = [...(updated[color] || []), null];
+       return updated;
+     });
+   };
+   // Add handler to remove an image field for a color
+   const removeColorImageField = (color, index) => {
+     setColorImageFiles(prev => {
+       const updated = { ...prev };
+       if ((updated[color] || []).length > 1) {
+         updated[color] = updated[color].filter((_, i) => i !== index);
+       }
+       return updated;
+     });
    };
 
    const handleQuantityChange = (color, size, value) => {
@@ -154,6 +195,11 @@ const Add = ({token}) => {
         }
       });
 
+      // Append all productImages to formData: // Removed
+      // productImages.forEach((img, idx) => { // Removed
+      //   if (img) formData.append('images', img); // Removed
+      // }); // Removed
+
       const response = await axios.post(backendUrl + "/api/product/add",formData,{headers:{token}, onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         setUploadProgress(percentCompleted);
@@ -181,7 +227,7 @@ const Add = ({token}) => {
    }
 
    // Determine which images to display in the main preview - now always based on managingColor
-   const imagesToPreview = managingColor === null && colors.length > 0 ? colorImageFiles[colors[0].name] : colorImageFiles[managingColor] || [null, null, null, null];
+   const imagesToPreview = managingColor === null && colors.length > 0 ? colorImageFiles[colors[0].name] : colorImageFiles[managingColor] || [null];
    const previewTitle = managingColor === null && colors.length > 0 ? `Images for ${colors[0].name} Preview` : managingColor !== null ? `Images for ${managingColor} Preview` : "Select a color to manage images";
 
    const isCombo7 = category === 'Combo7';
@@ -406,30 +452,39 @@ const Add = ({token}) => {
                 {/* Image Uploads for Selected Color */} 
                 {managingColor !== null && (
                     <div className='border p-4'>
-                        <p className='mb-2 text-sm font-medium'>{`Upload Images for ${managingColor} (up to 4)`}</p>
-                         <div className='flex gap-2'>
-                             {(colorImageFiles[managingColor] || [null, null, null, null]).map((image, index) => (
-                                 <label key={index} htmlFor={`${managingColor}_image_${index}`}>
-                                     <img className='w-20 cursor-pointer object-cover' src={image ? URL.createObjectURL(image) : assets.upload_area} alt="Image upload" />
-                                     <input 
-                                        onChange={(e) => handleColorImageFileChange(managingColor, index, e.target.files[0])}
-                                        type="file" 
-                                        id={`${managingColor}_image_${index}`} 
-                                        hidden
-                                    />
-                                </label>
-                            ))}
-                         </div>
-                         <button 
-                            type="button" 
-                            onClick={() => removeColor(managingColor)}
-                            className='mt-4 px-4 py-2 bg-red-500 text-white rounded text-sm'
-                         >
-                            Remove {managingColor} Color
-                         </button>
+                        <p className='mb-2 text-sm font-medium'>{`Upload Images for ${managingColor}`}</p>
+                        <div className='flex gap-2 flex-wrap items-center'>
+                          {(colorImageFiles[managingColor] || [null]).map((image, index) => (
+                            <div key={index} className='flex flex-col items-center'>
+                              <label htmlFor={`${managingColor}_image_${index}`}>
+                                <img className='w-20 cursor-pointer object-cover' src={image ? URL.createObjectURL(image) : assets.upload_area} alt='Image upload' />
+                                <input
+                                  onChange={e => handleColorImageFileChange(managingColor, index, e.target.files[0])}
+                                  type='file'
+                                  id={`${managingColor}_image_${index}`}
+                                  hidden
+                                />
+                              </label>
+                              {(colorImageFiles[managingColor]?.length > 1) && (
+                                <button type='button' className='text-xs text-red-500 mt-1' onClick={() => removeColorImageField(managingColor, index)}>Remove</button>
+                              )}
+                            </div>
+                          ))}
+                          <button type='button' className='w-20 h-20 border flex items-center justify-center text-3xl text-gray-400 bg-gray-50' onClick={() => addColorImageField(managingColor)} title='Add Image'>+</button>
+                        </div>
+                        <button
+                          type='button'
+                          onClick={() => removeColor(managingColor)}
+                          className='mt-4 px-4 py-2 bg-red-500 text-white rounded text-sm'
+                        >
+                          Remove {managingColor} Color
+                        </button>
                     </div>
                  )}
             </div>
+
+            {/* Product Images Section */}
+            {/* Removed main product image upload section */}
 
             <button type="submit" className='w-28 py-3 mt-8 bg-black text-white' disabled={loading}>ADD PRODUCT</button>
 

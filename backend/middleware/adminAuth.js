@@ -1,5 +1,9 @@
 import jwt from 'jsonwebtoken'
 
+// Hardcoded admin credentials
+const ADMIN_EMAIL = 'thetee545@gmail.com';
+const ADMIN_PASSWORD = 'Thetee@123#';
+
 const adminAuth = async (req,res,next) => {
     try {
         const { token } = req.headers
@@ -7,7 +11,7 @@ const adminAuth = async (req,res,next) => {
             return res.json({success:false,message:"Not Authorized Login Again"})
         }
         const token_decode = jwt.verify(token,process.env.JWT_SECRET);
-        if (token_decode !== process.env.ADMIN_EMAIL + process.env.ADMIN_PASSWORD) {
+        if (token_decode !== ADMIN_EMAIL + ADMIN_PASSWORD) {
             return res.json({success:false,message:"Not Authorized Login Again"})
         }
         next()

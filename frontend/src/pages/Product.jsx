@@ -196,37 +196,62 @@ const Product = () => {
 
   // Add a helper to check if product is Combo7
   const isCombo7 = productData && productData.category && productData.category === 'Combo7';
-  // State for Combo7 selections
+  // State for Combo7 selections - separate size selection
   const [combo7Selections, setCombo7Selections] = useState([
-    { color: '', size: '' },
-    { color: '', size: '' },
-    { color: '', size: '' },
-    { color: '', size: '' },
+    { color: '' },
+    { color: '' },
+    { color: '' },
+    { color: '' },
   ]);
+  const [combo7Size, setCombo7Size] = useState('');
+  
   // Helper to get available colors for Combo7
   const availableCombo7Colors = productData && productData.colors ? productData.colors : [];
-  // Helper to get available sizes for a color
-  const getCombo7Sizes = (colorName) => {
-    const colorObj = availableCombo7Colors.find(c => c.name === colorName);
-    return colorObj ? Object.keys(colorObj.stock || {}) : [];
+  
+  // Helper to get available sizes for Combo7 (common sizes across all selected colors)
+  const getCombo7Sizes = () => {
+    const selectedColors = combo7Selections.filter(sel => sel.color);
+    if (selectedColors.length === 0) return [];
+    
+    // Get all sizes from selected colors
+    const allSizes = new Set();
+    selectedColors.forEach(sel => {
+      const colorObj = availableCombo7Colors.find(c => c.name === sel.color);
+      if (colorObj && colorObj.stock) {
+        Object.keys(colorObj.stock).forEach(size => allSizes.add(size));
+      }
+    });
+    
+    // Only return sizes that are available in ALL selected colors
+    const commonSizes = Array.from(allSizes).filter(size => {
+      return selectedColors.every(sel => {
+        const colorObj = availableCombo7Colors.find(c => c.name === sel.color);
+        return colorObj && colorObj.stock && colorObj.stock[size] > 0;
+      });
+    });
+    
+    return commonSizes.sort();
   };
+  
   // Helper to get stock for a color/size
   const getCombo7Stock = (colorName, size) => {
     const colorObj = availableCombo7Colors.find(c => c.name === colorName);
     return colorObj && colorObj.stock ? colorObj.stock[size] || 0 : 0;
   };
-  // Handler for Combo7 selection change
-  const handleCombo7Change = (idx, field, value) => {
+  
+  // Handler for Combo7 color selection change
+  const handleCombo7ColorChange = (idx, colorName) => {
     setCombo7Selections(prev => {
       const updated = [...prev];
-      updated[idx] = { ...updated[idx], [field]: value };
-      // If color changes, reset size
-      if (field === 'color') updated[idx].size = '';
+      updated[idx] = { color: colorName };
       return updated;
     });
+    // Reset size when colors change
+    setCombo7Size('');
   };
+  
   // Helper to check if all 4 selections are valid
-  const isCombo7Valid = combo7Selections.every(sel => sel.color && sel.size);
+  const isCombo7Valid = combo7Selections.every(sel => sel.color) && combo7Size;
 
   if (isLoading) {
     return (
@@ -271,62 +296,77 @@ const Product = () => {
           {isCombo7 ? (
             <div className="mt-4 border p-4 rounded bg-orange-50">
               <h3 className="font-semibold text-lg mb-2">Pick Any 4 T-shirts (Combo7)</h3>
-              <p className="text-sm mb-4">Select color and size for each T-shirt. You can pick any 4 out of the available 7 options.</p>
-              {combo7Selections.map((sel, idx) => (
-                <div key={idx} className="flex flex-wrap items-center gap-4 mb-2">
-                  <span className="font-medium">T-shirt {idx + 1}:</span>
-                  <select
-                    className="border rounded px-2 py-1"
-                    value={sel.color}
-                    onChange={e => handleCombo7Change(idx, 'color', e.target.value)}
-                  >
-                    <option value="">Select Color</option>
-                    {availableCombo7Colors.map(color => (
-                      <option
-                        key={color.name}
-                        value={color.name}
-                        disabled={combo7Selections.some((s, i) => i !== idx && s.color === color.name)}
-                      >
-                        {color.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="border rounded px-2 py-1"
-                    value={sel.size}
-                    onChange={e => handleCombo7Change(idx, 'size', e.target.value)}
-                    disabled={!sel.color}
-                  >
-                    <option value="">Select Size</option>
-                    {sel.color && getCombo7Sizes(sel.color).map(sizeOption => (
-                      <option
-                        key={sizeOption}
-                        value={sizeOption}
-                        disabled={getCombo7Stock(sel.color, sizeOption) === 0}
-                      >
-                        {sizeOption} {getCombo7Stock(sel.color, sizeOption) === 0 ? '(Out of stock)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {sel.color && sel.size && getCombo7Stock(sel.color, sel.size) === 0 && (
-                    <span className="text-red-500 text-xs ml-2">Out of stock</span>
-                  )}
-                </div>
-              ))}
+              <p className="text-sm mb-4">Select 4 different colors and one common size for all T-shirts.</p>
+              
+              {/* Color selections */}
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">Select 4 Colors:</h4>
+                {combo7Selections.map((sel, idx) => (
+                  <div key={idx} className="flex items-center gap-4 mb-2">
+                    <span className="font-medium">T-shirt {idx + 1}:</span>
+                    <select
+                      className="border rounded px-2 py-1"
+                      value={sel.color}
+                      onChange={e => handleCombo7ColorChange(idx, e.target.value)}
+                    >
+                      <option value="">Select Color</option>
+                      {availableCombo7Colors.map(color => (
+                        <option
+                          key={color.name}
+                          value={color.name}
+                          disabled={combo7Selections.some((s, i) => i !== idx && s.color === color.name)}
+                        >
+                          {color.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Size selection */}
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">Select Size (for all T-shirts):</h4>
+                <select
+                  className="border rounded px-2 py-1"
+                  value={combo7Size}
+                  onChange={e => setCombo7Size(e.target.value)}
+                  disabled={combo7Selections.filter(sel => sel.color).length === 0}
+                >
+                  <option value="">Select Size</option>
+                  {getCombo7Sizes().map(sizeOption => (
+                    <option key={sizeOption} value={sizeOption}>
+                      {sizeOption}
+                    </option>
+                  ))}
+                </select>
+                {combo7Selections.filter(sel => sel.color).length > 0 && getCombo7Sizes().length === 0 && (
+                  <p className="text-red-500 text-xs mt-1">No common sizes available for selected colors</p>
+                )}
+              </div>
+              
               <div className="mt-4">
                 <h4 className="font-semibold mb-2">Your Selection:</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {combo7Selections.map((sel, idx) => (
                     <div key={idx} className="text-sm bg-white rounded p-2 border">
-                      Color {idx + 1}: <span className="font-medium">{sel.color || '-'}</span> &nbsp;&nbsp; Size {idx + 1}: <span className="font-medium">{sel.size || '-'}</span>
+                      Color {idx + 1}: <span className="font-medium">{sel.color || '-'}</span>
                     </div>
                   ))}
                 </div>
+                <div className="mt-2 text-sm bg-white rounded p-2 border">
+                  Size: <span className="font-medium">{combo7Size || '-'}</span>
+                </div>
               </div>
+              
               <button
                 onClick={() => {
-                  // Add Combo7 selections to cart (custom logic needed)
-                  addToCart(productData._id, combo7Selections, 'Combo7');
+                  // Add Combo7 selections to cart - transform data to match expected format
+                  const combo7Data = combo7Selections.map(sel => ({
+                    color: sel.color,
+                    size: combo7Size
+                  }));
+                  addToCart(productData._id, combo7Data, 'Combo7');
                   navigate('/cart');
                 }}
                 disabled={!isCombo7Valid}

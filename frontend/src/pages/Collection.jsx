@@ -215,7 +215,7 @@ const Collection = () => {
               </div>
               {/* Combo7 products */}
               <div className="mb-10">
-                <h3 className="text-lg font-semibold mb-4 text-orange-700">Combo of 7: Pick Any 4 at ₹899 only</h3>
+                <h3 className="text-lg font-semibold mb-4 text-orange-700">Combo 31: Pick Any 4 at ₹899 only</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
                   {filterProducts.filter(item => item.category === 'Combo7').map(item => (
                     <ProductItem

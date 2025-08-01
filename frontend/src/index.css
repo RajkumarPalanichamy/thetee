@@ -22,6 +22,27 @@ a.active hr{
     display: none;
   }
   
+  /* Custom scrollbar for dropdowns */
+  .dropdown-scroll::-webkit-scrollbar {
+    display: block;
+    width: 8px;
+    height: 8px;
+  }
+  
+  .dropdown-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  .dropdown-scroll::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  
+  .dropdown-scroll::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
   @media (max-width:640px) {
     a.active{
         background-color: black;

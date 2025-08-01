@@ -6,43 +6,37 @@ import RelatedProducts from '../components/RelatedProducts';
 import axios from 'axios';
 
 const COLOR_HEX_MAP = {
-  "Navy": "#001F3F",
-  "Grey": "#808080",
-  "Black": "#000000",
-  "Olive Green": "#556B2F",
-  "White": "#FFFFFF",
-  "Light Pink": "#FFB6C1",
-  "Lavender": "#E6E6FA",
-  "Mint": "#98FF98",
-  "Baby Blue": "#ADD8E6",
-  "Beige": "#F5F5DC",
-  "Brick Red": "#8B0000",
-  "Coffee Brown": "#4B3621",
-  "Copper": "#B87333",
-  "Flag Green": "#006400",
-  "Flamingo": "#FC8EAC",
-  "Golden Yellow": "#FFD700",
-  "Jade": "#00A86B",
-  "Mushroom": "#BEBEBE",
-  "New Yellow": "#FFFF00",
-  "Off White": "#FAF9F6",
-  "Orange": "#FFA500",
-  "Peach": "#FFE5B4",
   "Petrol Blue": "#004B6B",
-  "Purple": "#800080",
-  "Steel Grey": "#71797E",
-  "Yellow": "#FFFF00",
-  "Coral": "#FF7F50",
-  "Mustard Yellow": "#FFDB58",
+  "Peach": "#FFE5B4",
+  "Orange": "#FFA500",
+  "Mushroom": "#BEBEBE",
   "Maroon": "#800000",
-  "Royal Blue": "#4169E1",
-  "Green": "#008000",
-  "Red": "#FF0000",
-  "Charcoal Melange": "#36454F",
-  "Grey Melange": "#A9A9A9",
+  "Lavender": "#E6E6FA",
+  "Jade": "#00A86B",
+  "Coral": "#FF7F50",
+  "Grey": "#808080",
+  "Copper": "#B87333",
+  "Beige": "#F5F5DC",
+  "Olive Green": "#556B2F",
+  "Yellow": "#FFFF00",
   "Sky Blue": "#87CEEB",
-  "Orchid Blue": "#7B68EE",
-  "Multi": "#36454F"
+  "New Yellow": "#FFFF00",
+  "Navy": "#001F3F",
+  "Mustard Yellow": "#FFDB58",
+  "Mint Blue": "#98FF98",
+  "Flamingo": "#FC8EAC",
+  "Green": "#008000",
+  "Brick Red": "#8B0000",
+  "Flag Green": "#006400",
+  "Black": "#000000",
+  "Baby Blue": "#ADD8E6",
+  "Royal Blue": "#4169E1",
+  "Steel Grey": "#71797E",
+  "Purple": "#800080",
+  "Pink": "#FFC0CB",
+  "Coffee Brown": "#4B3621",
+  "Off White": "#FAF9F6",
+  "White": "#FFFFFF"
 };
 
 const Product = () => {
@@ -198,12 +192,24 @@ const Product = () => {
   const isCombo7 = productData && productData.category && productData.category === 'Combo7';
   // State for Combo7 selections - separate size selection
   const [combo7Selections, setCombo7Selections] = useState([
-    { color: '' },
-    { color: '' },
-    { color: '' },
-    { color: '' },
+    { color: '', showDropdown: false },
+    { color: '', showDropdown: false },
+    { color: '', showDropdown: false },
+    { color: '', showDropdown: false },
   ]);
   const [combo7Size, setCombo7Size] = useState('');
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  
+  // Close all dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowSizeDropdown(false);
+      setCombo7Selections(prev => prev.map(sel => ({ ...sel, showDropdown: false })));
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
   
   // Helper to get available colors for Combo7
   const availableCombo7Colors = productData && productData.colors ? productData.colors : [];
@@ -213,12 +219,18 @@ const Product = () => {
     const selectedColors = combo7Selections.filter(sel => sel.color);
     if (selectedColors.length === 0) return [];
     
+    // Default sizes for all T-shirts
+    const defaultSizes = ['S', 'M', 'L', 'XL', 'XXL'];
+    
     // Get all sizes from selected colors
     const allSizes = new Set();
     selectedColors.forEach(sel => {
       const colorObj = availableCombo7Colors.find(c => c.name === sel.color);
       if (colorObj && colorObj.stock) {
         Object.keys(colorObj.stock).forEach(size => allSizes.add(size));
+      } else if (COLOR_HEX_MAP[sel.color]) {
+        // If color exists in COLOR_HEX_MAP but not in availableCombo7Colors, use default sizes
+        defaultSizes.forEach(size => allSizes.add(size));
       }
     });
     
@@ -226,6 +238,10 @@ const Product = () => {
     const commonSizes = Array.from(allSizes).filter(size => {
       return selectedColors.every(sel => {
         const colorObj = availableCombo7Colors.find(c => c.name === sel.color);
+        // If color exists in COLOR_HEX_MAP but not in availableCombo7Colors, assume all default sizes are available
+        if (!colorObj && COLOR_HEX_MAP[sel.color] && defaultSizes.includes(size)) {
+          return true;
+        }
         return colorObj && colorObj.stock && colorObj.stock[size] > 0;
       });
     });
@@ -236,6 +252,10 @@ const Product = () => {
   // Helper to get stock for a color/size
   const getCombo7Stock = (colorName, size) => {
     const colorObj = availableCombo7Colors.find(c => c.name === colorName);
+    // If color exists in COLOR_HEX_MAP but not in availableCombo7Colors, assume it's available
+    if (!colorObj && COLOR_HEX_MAP[colorName]) {
+      return 10; // Default stock value for colors in COLOR_HEX_MAP but not in availableCombo7Colors
+    }
     return colorObj && colorObj.stock ? colorObj.stock[size] || 0 : 0;
   };
   
@@ -301,45 +321,85 @@ const Product = () => {
               {/* Color selections */}
               <div className="mb-4">
                 <h4 className="font-medium mb-2">Select 4 Colors:</h4>
-                {combo7Selections.map((sel, idx) => (
-                  <div key={idx} className="flex items-center gap-4 mb-2">
-                    <span className="font-medium">T-shirt {idx + 1}:</span>
-                    <select
-                      className="border rounded px-2 py-1"
-                      value={sel.color}
-                      onChange={e => handleCombo7ColorChange(idx, e.target.value)}
-                    >
-                      <option value="">Select Color</option>
-                      {availableCombo7Colors.map(color => (
-                        <option
-                          key={color.name}
-                          value={color.name}
-                          disabled={combo7Selections.some((s, i) => i !== idx && s.color === color.name)}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {combo7Selections.map((sel, idx) => (
+                    <div key={idx} className="flex flex-col mb-2">
+                      <label className="font-medium text-sm mb-1">T-shirt {idx + 1}:</label>
+                      <div className="relative">
+                        <select
+                          className="w-full appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dropdown-scroll"
+                          value={sel.color}
+                          onChange={e => handleCombo7ColorChange(idx, e.target.value)}
+                          size={sel.showDropdown ? (Object.keys(COLOR_HEX_MAP).length > 10 ? 10 : Object.keys(COLOR_HEX_MAP).length) : 1}
+                          onClick={(e) => {
+                            // Toggle dropdown visibility when clicking on the select
+                            if (e.target.tagName === 'SELECT') {
+                              const newSelections = [...combo7Selections];
+                              newSelections[idx] = { ...newSelections[idx], showDropdown: !sel.showDropdown };
+                              setCombo7Selections(newSelections);
+                              e.stopPropagation();
+                            }
+                          }}
+                          onBlur={() => {
+                            const newSelections = [...combo7Selections];
+                            newSelections[idx] = { ...newSelections[idx], showDropdown: false };
+                            setCombo7Selections(newSelections);
+                          }}
                         >
-                          {color.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+                          <option value="">Select Color</option>
+                          {Object.keys(COLOR_HEX_MAP).map(colorName => (
+                            <option
+                              key={colorName}
+                              value={colorName}
+                              disabled={combo7Selections.some((s, i) => i !== idx && s.color === colorName)}
+                              className="py-1"
+                            >
+                              {colorName}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                          <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
               
               {/* Size selection */}
               <div className="mb-4">
                 <h4 className="font-medium mb-2">Select Size (for all T-shirts):</h4>
-                <select
-                  className="border rounded px-2 py-1"
-                  value={combo7Size}
-                  onChange={e => setCombo7Size(e.target.value)}
-                  disabled={combo7Selections.filter(sel => sel.color).length === 0}
-                >
-                  <option value="">Select Size</option>
-                  {getCombo7Sizes().map(sizeOption => (
-                    <option key={sizeOption} value={sizeOption}>
-                      {sizeOption}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative max-w-xs">
+                  <select
+                    className="w-full appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dropdown-scroll"
+                    value={combo7Size}
+                    onChange={e => setCombo7Size(e.target.value)}
+                    disabled={combo7Selections.filter(sel => sel.color).length === 0}
+                    size={showSizeDropdown ? (getCombo7Sizes().length > 10 ? 10 : Math.max(2, getCombo7Sizes().length)) : 1}
+                    onClick={(e) => {
+                      if (e.target.tagName === 'SELECT' && !e.target.disabled) {
+                        setShowSizeDropdown(!showSizeDropdown);
+                        e.stopPropagation();
+                      }
+                    }}
+                    onBlur={() => setShowSizeDropdown(false)}
+                  >
+                    <option value="">Select Size</option>
+                    {getCombo7Sizes().map(sizeOption => (
+                      <option key={sizeOption} value={sizeOption} className="py-1">
+                        {sizeOption}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
                 {combo7Selections.filter(sel => sel.color).length > 0 && getCombo7Sizes().length === 0 && (
                   <p className="text-red-500 text-xs mt-1">No common sizes available for selected colors</p>
                 )}
@@ -347,15 +407,33 @@ const Product = () => {
               
               <div className="mt-4">
                 <h4 className="font-semibold mb-2">Your Selection:</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {combo7Selections.map((sel, idx) => (
-                    <div key={idx} className="text-sm bg-white rounded p-2 border">
-                      Color {idx + 1}: <span className="font-medium">{sel.color || '-'}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 text-sm bg-white rounded p-2 border">
-                  Size: <span className="font-medium">{combo7Size || '-'}</span>
+                <div className="bg-white rounded-md border border-gray-200 p-3 shadow-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    {combo7Selections.map((sel, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className="font-medium text-sm">T-shirt {idx + 1}:</div>
+                        {sel.color ? (
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-5 h-5 rounded-full border border-gray-300" 
+                              style={{ backgroundColor: COLOR_HEX_MAP[sel.color] || '#eee' }}
+                            ></div>
+                            <span className="text-sm">{sel.color}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Not selected</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 border-t pt-2">
+                    <div className="font-medium text-sm">Size:</div>
+                    {combo7Size ? (
+                      <span className="text-sm">{combo7Size}</span>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Not selected</span>
+                    )}
+                  </div>
                 </div>
               </div>
               

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Hero1 from "../assets/Banner.webp";
 import Hero2 from "../assets/banner3.webp";
-import Hero3 from "../assets/banner21.webp"; // <- New banner image
-import Hero4 from "../assets/banner22.webp"; // <- Second slideshow image
+import Hero3 from "../assets/Banner21.webp"; // <- New banner image
+import Hero4 from "../assets/Banner22.webp"; // <- Second slideshow image
 import { Link } from "react-router-dom";
 
 const Hero = () => {

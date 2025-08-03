@@ -48,6 +48,69 @@ a.active hr{
         background-color: black;
         color: white;
     }
+
+    /* Mobile dropdown optimizations */
+    select {
+      min-height: 44px;
+      font-size: 16px;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      border-radius: 8px;
+      padding: 12px 40px 12px 12px;
+      background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23666' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 12px;
+      touch-action: manipulation;
+    }
+
+    select:focus {
+      outline: none;
+      border: 2px solid #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    select option {
+      padding: 12px;
+      font-size: 16px;
+      background-color: white;
+      color: black;
+    }
+
+    .touch-manipulation {
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Improve button touch targets on mobile */
+    button {
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Better focus styles for mobile */
+    button:focus,
+    select:focus {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+
+    /* Ensure dropdown arrows are visible */
+    select::-ms-expand {
+      display: none;
+    }
+  }
+
+  /* General mobile improvements for all screen sizes */
+  @media (max-width: 768px) {
+    /* Make sure touch targets are at least 44px */
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 
   @media only screen and (max-width: 480px) {

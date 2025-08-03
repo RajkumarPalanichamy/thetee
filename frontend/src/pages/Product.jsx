@@ -192,24 +192,14 @@ const Product = () => {
   const isCombo7 = productData && productData.category && productData.category === 'Combo7';
   // State for Combo7 selections - separate size selection
   const [combo7Selections, setCombo7Selections] = useState([
-    { color: '', showDropdown: false },
-    { color: '', showDropdown: false },
-    { color: '', showDropdown: false },
-    { color: '', showDropdown: false },
+    { color: '' },
+    { color: '' },
+    { color: '' },
+    { color: '' },
   ]);
   const [combo7Size, setCombo7Size] = useState('');
-  const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   
-  // Close all dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setShowSizeDropdown(false);
-      setCombo7Selections(prev => prev.map(sel => ({ ...sel, showDropdown: false })));
-    };
-    
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+
   
   // Helper to get available colors for Combo7
   const availableCombo7Colors = productData && productData.colors ? productData.colors : [];
@@ -327,24 +317,9 @@ const Product = () => {
                       <label className="font-medium text-sm mb-1">T-shirt {idx + 1}:</label>
                       <div className="relative">
                         <select
-                          className="w-full appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dropdown-scroll"
+                          className="w-full appearance-none bg-white border border-gray-300 rounded-md py-3 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base cursor-pointer touch-manipulation"
                           value={sel.color}
                           onChange={e => handleCombo7ColorChange(idx, e.target.value)}
-                          size={sel.showDropdown ? (Object.keys(COLOR_HEX_MAP).length > 10 ? 10 : Object.keys(COLOR_HEX_MAP).length) : 1}
-                          onClick={(e) => {
-                            // Toggle dropdown visibility when clicking on the select
-                            if (e.target.tagName === 'SELECT') {
-                              const newSelections = [...combo7Selections];
-                              newSelections[idx] = { ...newSelections[idx], showDropdown: !sel.showDropdown };
-                              setCombo7Selections(newSelections);
-                              e.stopPropagation();
-                            }
-                          }}
-                          onBlur={() => {
-                            const newSelections = [...combo7Selections];
-                            newSelections[idx] = { ...newSelections[idx], showDropdown: false };
-                            setCombo7Selections(newSelections);
-                          }}
                         >
                           <option value="">Select Color</option>
                           {Object.keys(COLOR_HEX_MAP).map(colorName => (
@@ -374,18 +349,10 @@ const Product = () => {
                 <h4 className="font-medium mb-2">Select Size (for all T-shirts):</h4>
                 <div className="relative max-w-xs">
                   <select
-                    className="w-full appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dropdown-scroll"
+                    className="w-full appearance-none bg-white border border-gray-300 rounded-md py-3 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base cursor-pointer touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                     value={combo7Size}
                     onChange={e => setCombo7Size(e.target.value)}
                     disabled={combo7Selections.filter(sel => sel.color).length === 0}
-                    size={showSizeDropdown ? (getCombo7Sizes().length > 10 ? 10 : Math.max(2, getCombo7Sizes().length)) : 1}
-                    onClick={(e) => {
-                      if (e.target.tagName === 'SELECT' && !e.target.disabled) {
-                        setShowSizeDropdown(!showSizeDropdown);
-                        e.stopPropagation();
-                      }
-                    }}
-                    onBlur={() => setShowSizeDropdown(false)}
                   >
                     <option value="">Select Size</option>
                     {getCombo7Sizes().map(sizeOption => (
@@ -448,7 +415,7 @@ const Product = () => {
                   navigate('/cart');
                 }}
                 disabled={!isCombo7Valid}
-                className="mt-6 px-5 py-2 bg-black text-white rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors duration-300"
+                className="mt-6 w-full px-5 py-4 bg-black text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-900 transition-colors duration-200 touch-manipulation min-h-[44px]"
               >
                 Add to Cart
               </button>
@@ -462,13 +429,13 @@ const Product = () => {
               ) : (
                 <div className='mt-4'>
                   <h4 className='text-sm mb-2 font-medium'>Available Colors</h4>
-                  <div className='grid grid-cols-8 gap-3 max-w-[320px]'>
+                  <div className='grid grid-cols-6 sm:grid-cols-8 gap-3 max-w-[320px]'>
                     {productData.colors.map(color => (
                       <button
                         key={color.name}
                         onClick={() => handleColorClick(color.name)}
                         aria-label={color.name}
-                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center relative transition-all duration-150 ${selectedColor === color.name ? 'border-black' : 'border-gray-300'}`}
+                        className={`w-10 h-10 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center relative transition-all duration-200 touch-manipulation active:scale-95 ${selectedColor === color.name ? 'border-black ring-2 ring-gray-400' : 'border-gray-300 hover:border-gray-400'}`}
                         style={{ backgroundColor: color.value || COLOR_HEX_MAP[color.name] || '#eee' }}
                       >
                         {selectedColor === color.name && (
@@ -496,22 +463,22 @@ const Product = () => {
               {isCombo ? (
                 <div className='mt-4'>
                   <h4 className='text-sm mb-2 font-medium'>Select Size:</h4>
-                  <div className='flex gap-2 flex-wrap'>
-                    {Object.keys(stockInfo[productData.colors[0].name] || {}).map((sizeOption, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setSelectedColor(productData.colors[0].name);
-                          setSize(sizeOption);
-                        }}
-                        disabled={!isSizeAvailable(sizeOption)}
-                        className={`px-3 py-1 border rounded 
-                          ${size === sizeOption ? 'border-black' : 'border-gray-300'} 
-                          ${!isSizeAvailable(sizeOption) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        {sizeOption}
-                      </button>
-                    ))}
-                  </div>
+                                      <div className='flex gap-2 flex-wrap'>
+                      {Object.keys(stockInfo[productData.colors[0].name] || {}).map((sizeOption, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSelectedColor(productData.colors[0].name);
+                            setSize(sizeOption);
+                          }}
+                          disabled={!isSizeAvailable(sizeOption)}
+                          className={`px-4 py-3 border rounded-md text-base font-medium transition-all duration-200 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center
+                            ${size === sizeOption ? 'border-black bg-black text-white' : 'border-gray-300 bg-white text-black hover:border-gray-400'} 
+                            ${!isSizeAvailable(sizeOption) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
+                          {sizeOption}
+                        </button>
+                      ))}
+                    </div>
                 </div>
               ) : (
                 selectedColor && (
@@ -523,9 +490,9 @@ const Product = () => {
                           key={idx}
                           onClick={() => setSize(sizeOption)}
                           disabled={!isSizeAvailable(sizeOption)}
-                          className={`px-3 py-1 border rounded 
-                            ${size === sizeOption ? 'border-black' : 'border-gray-300'} 
-                            ${!isSizeAvailable(sizeOption) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          className={`px-4 py-3 border rounded-md text-base font-medium transition-all duration-200 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center
+                            ${size === sizeOption ? 'border-black bg-black text-white' : 'border-gray-300 bg-white text-black hover:border-gray-400'} 
+                            ${!isSizeAvailable(sizeOption) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}>
                           {sizeOption}
                         </button>
                       ))}
@@ -535,12 +502,12 @@ const Product = () => {
               )}
 
               {isTopwear && (
-                <button
-                  onClick={() => setShowSizeChart(true)}
-                  className='mt-4 text-xs underline flex items-center hover:text-gray-700'>
-                  <TbRulerMeasure className='text-2xl mr-2' />
-                  Size Chart
-                </button>
+                              <button
+                onClick={() => setShowSizeChart(true)}
+                className='mt-4 text-sm underline flex items-center hover:text-gray-700 touch-manipulation py-2'>
+                <TbRulerMeasure className='text-2xl mr-2' />
+                Size Chart
+              </button>
               )}
 
               {selectedColor && (
@@ -561,7 +528,7 @@ const Product = () => {
                   navigate('/cart');
                 }}
                 disabled={!size || isCurrentSizeOutOfStock}
-                className='mt-4 px-5 py-2 bg-black text-white rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors duration-300'>
+                className='mt-4 w-full sm:w-auto px-5 py-4 bg-black text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-900 transition-colors duration-200 touch-manipulation min-h-[44px]'>
                 Add to Cart
               </button>
             </>

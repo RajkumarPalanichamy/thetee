@@ -79,15 +79,13 @@ const PlaceOrder = () => {
     }, [cartItems, products, calculateCartTotals]);
 
     // Calculate shipping fee based on state
-    useEffect(() => {
-        if (formData.state) {
-            if (formData.state === 'Tamil Nadu') {
-                setShippingFee(100);
-            } else {
-                setShippingFee(150);
-            }
-        }
-    }, [formData.state]);
+ // Calculate shipping fee (₹100 for all states)
+useEffect(() => {
+    if (formData.state) {
+        setShippingFee(100);
+    }
+}, [formData.state]);
+
 
     const onChangeHandler = (event) => {
         const name = event.target.name;
@@ -173,13 +171,26 @@ const PlaceOrder = () => {
                 amount: (cartSummary.total + shippingFee)
             }
 
-            // Only Razorpay payment handling
-            const responseRazorpay = await axios.post(backendUrl + '/api/order/razorpay', orderData, { headers: { token } })
-            if (responseRazorpay.data.success) {
-                window.dispatchEvent(new Event('orderPlaced'));
-                initPay(responseRazorpay.data.order)
-            } else {
-                toast.error(responseRazorpay.data.message || "Failed to initiate Razorpay order")
+            // Handle payment based on selected method
+            if (method === 'razorpay') {
+                const responseRazorpay = await axios.post(backendUrl + '/api/order/razorpay', orderData, { headers: { token } })
+                if (responseRazorpay.data.success) {
+                    window.dispatchEvent(new Event('orderPlaced'));
+                    initPay(responseRazorpay.data.order)
+                } else {
+                    toast.error(responseRazorpay.data.message || "Failed to initiate Razorpay order")
+                }
+            } else if (method === 'cod') {
+                // Cash on Delivery - create order directly
+                const responseCOD = await axios.post(backendUrl + '/api/order/cod', orderData, { headers: { token } })
+                if (responseCOD.data.success) {
+                    setCartItems({})
+                    window.dispatchEvent(new Event('orderPlaced'));
+                    toast.success("Order Placed! You will pay cash on delivery.");
+                    navigate('/orders')
+                } else {
+                    toast.error(responseCOD.data.message || "Failed to place COD order")
+                }
             }
 
         } catch (error) {
@@ -338,14 +349,25 @@ const PlaceOrder = () => {
 
                 <div className='mt-12'>
                   
-               <div className="font-bold text-xl sm:text-2xl my-3 px-4">
+                <div className="font-bold text-xl sm:text-2xl my-3 px-4">
                   <h2>Payment Method</h2>
                </div>
-                    {/* Only Razorpay shown */}
+                    {/* Payment method options */}
                     <div className='flex gap-3 flex-col lg:flex-row'>
-                        <div className='flex items-center gap-3 border p-2 px-3 cursor-pointer'>
-                            <p className='min-w-3.5 h-3.5 border rounded-full bg-green-400'></p>
+                        <div 
+                            className={`flex items-center gap-3 border p-2 px-3 cursor-pointer ${method === 'razorpay' ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                            onClick={() => setMethod('razorpay')}
+                        >
+                            <div className={`min-w-3.5 h-3.5 border rounded-full ${method === 'razorpay' ? 'bg-green-400' : 'bg-white'}`}></div>
                             <img className='h-5 mx-4' src={assets.razorpay_logo} alt="Razorpay" />
+                            <span className="text-sm">Online Payment</span>
+                        </div>
+                        <div 
+                            className={`flex items-center gap-3 border p-2 px-3 cursor-pointer ${method === 'cod' ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                            onClick={() => setMethod('cod')}
+                        >
+                            <div className={`min-w-3.5 h-3.5 border rounded-full ${method === 'cod' ? 'bg-green-400' : 'bg-white'}`}></div>
+                            <span className="text-sm font-medium">Cash on Delivery</span>
                         </div>
                     </div>
 

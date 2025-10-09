@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
 import { ShopContext } from '../context/ShopContext';
 import Title from '../components/Title';
 import { assets } from '../assets/assets';
@@ -11,6 +11,7 @@ const Cart = () => {
   const [cartData, setCartData] = useState([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [updatingQuantity, setUpdatingQuantity] = useState(false);
   const [cartSummary, setCartSummary] = useState({
     subtotal: 0,
     discountAmount: 0,
@@ -18,6 +19,21 @@ const Cart = () => {
     discountApplied: false,
     discountMessage: ''
   });
+
+  // Debounced quantity update to prevent rapid API calls
+  const debouncedUpdateQuantity = async (itemId, sizeColor, quantity) => {
+    if (updatingQuantity) return; // Prevent multiple simultaneous updates
+    
+    setUpdatingQuantity(true);
+    try {
+      await updateQuantity(itemId, sizeColor, quantity);
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    } finally {
+      // Small delay to prevent rapid successive calls
+      setTimeout(() => setUpdatingQuantity(false), 300);
+    }
+  };
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -27,33 +43,42 @@ const Cart = () => {
     });
   }, []);
 
-  useEffect(() => {
-    if (products.length > 0) {
-      const tempData = [];
-      for (const items in cartItems) {
-        for (const item in cartItems[items]) {
-          if (cartItems[items][item] > 0) {
-            const [size, color] = item.split('-');
-            const product = products.find(p => p._id === items);
-            if (product) {
-              tempData.push({
-                _id: items,
-                size,
-                color,
-                quantity: cartItems[items][item]
-              });
-            }
+  // Memoize cart data calculation to prevent unnecessary re-renders
+  const memoizedCartData = useMemo(() => {
+    if (products.length === 0) return [];
+    
+    const tempData = [];
+    for (const items in cartItems) {
+      for (const item in cartItems[items]) {
+        if (cartItems[items][item] > 0) {
+          const [size, color] = item.split('-');
+          const product = products.find(p => p._id === items);
+          if (product) {
+            tempData.push({
+              _id: items,
+              size,
+              color,
+              quantity: cartItems[items][item]
+            });
           }
         }
       }
+    }
+    return tempData;
+  }, [cartItems, products]);
 
-      setCartData(tempData);
-      // Use only the context's calculateCartTotals
-      const totals = calculateCartTotals();
-      setCartSummary(totals);
+  // Memoize cart totals calculation
+  const memoizedCartSummary = useMemo(() => {
+    return calculateCartTotals();
+  }, [calculateCartTotals]);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      setCartData(memoizedCartData);
+      setCartSummary(memoizedCartSummary);
       setIsLoading(false);
     }
-  }, [cartItems, products, calculateCartTotals]);
+  }, [memoizedCartData, memoizedCartSummary, products.length]);
 
   useEffect(() => {
     // Hide success message after 3 seconds
@@ -184,9 +209,10 @@ const Cart = () => {
                             <button
                               onClick={() => {
                                 const newQuantity = Math.max(1, item.quantity - 1);
-                                updateQuantity(item._id, `${item.size}-${item.color}`, newQuantity);
+                                debouncedUpdateQuantity(item._id, `${item.size}-${item.color}`, newQuantity);
                               }}
-                              className="px-3 py-2 text-gray-600 hover:bg-gray-100 transition-colors"
+                              disabled={updatingQuantity}
+                              className="px-3 py-2 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               -
                             </button>
@@ -196,17 +222,19 @@ const Cart = () => {
                               value={item.quantity}
                               onChange={(e) => {
                                 const value = Number(e.target.value);
-                                if (value > 0) updateQuantity(item._id, `${item.size}-${item.color}`, value);
+                                if (value > 0) debouncedUpdateQuantity(item._id, `${item.size}-${item.color}`, value);
                               }}
-                              className="w-16 text-center border-x py-2 focus:outline-none"
+                              disabled={updatingQuantity}
+                              className="w-16 text-center border-x py-2 focus:outline-none disabled:opacity-50"
                             />
                             <button
                               onClick={() => {
-                                updateQuantity(item._id, `${item.size}-${item.color}`, item.quantity + 1);
+                                debouncedUpdateQuantity(item._id, `${item.size}-${item.color}`, item.quantity + 1);
                               }}
-                              className="px-3 py-2 text-gray-600 hover:bg-gray-100 transition-colors"
+                              disabled={updatingQuantity}
+                              className="px-3 py-2 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              +
+                              {updatingQuantity ? '...' : '+'}
                             </button>
                           </div>
                           <button

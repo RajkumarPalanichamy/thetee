@@ -361,4 +361,65 @@ const updateStatus = async (req,res) => {
     }
 }
 
-export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus}
+// Cash on Delivery endpoint
+const placeOrderCOD = async (req, res) => {
+    try {
+        const { address, items, amount, paymentMethod } = req.body;
+        const userId = req.user.id;
+
+        // Update stock for each item
+        for (const item of items) {
+            const product = await productModel.findById(item._id);
+            if (!product) {
+                return res.json({ success: false, message: `Product ${item._id} not found` });
+            }
+
+            // Parse size and color from the combined format (e.g., "S-black")
+            const [size, color] = item.size.split('-');
+            const colorData = product.colors.find(c => c.name === color);
+            if (!colorData) {
+                return res.json({ success: false, message: `Color ${color} not found for product ${item._id}` });
+            }
+
+            const currentStock = colorData.stock.get(size);
+            if (!currentStock || currentStock < item.quantity) {
+                return res.json({ success: false, message: `Not enough stock for ${item.name} in size ${size} and color ${color}` });
+            }
+
+            // Update stock using findOneAndUpdate with $inc
+            const updateResult = await productModel.findOneAndUpdate(
+                { _id: item._id, "colors.name": color },
+                { $inc: { [`colors.$.stock.${size}`]: -item.quantity } },
+                { new: true, runValidators: true }
+            );
+
+            if (!updateResult) {
+                console.error(`Failed to update stock for product ${item._id}`);
+                return res.json({ success: false, message: `Failed to update stock for product ${item.name}` });
+            }
+        }
+
+        const orderData = {
+            userId,
+            items,
+            address,
+            amount,
+            paymentMethod: paymentMethod || "COD",
+            payment: true, // COD is considered paid when order is placed
+            date: Date.now()
+        }
+
+        const order = new orderModel(orderData)
+        await order.save()
+
+        await userModel.findByIdAndUpdate(userId, { cartData: {} })
+
+        res.json({ success: true, message: "COD Order Placed Successfully", order })
+
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, placeOrderCOD, allOrders, userOrders, updateStatus}

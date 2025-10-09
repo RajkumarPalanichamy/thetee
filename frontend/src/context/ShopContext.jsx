@@ -99,6 +99,23 @@ const ShopContextProvider = (props) => {
         return totalCount;
     };
 
+    // New function to count unique products (not quantities)
+    const getCartItemCount = () => {
+        let uniqueItemCount = 0;
+        for (const items in cartItems) {
+            for (const item in cartItems[items]) {
+                try {
+                    if (cartItems[items][item] > 0) {
+                        uniqueItemCount += 1; // Count each unique size-color combination as 1 item
+                    }
+                } catch (error) {
+                    // Silent error
+                }
+            }
+        }
+        return uniqueItemCount;
+    };
+
     const updateQuantity = async (itemId, size, quantity) => {
         let cartData = structuredClone(cartItems);
         const [itemSize, itemColor] = size.split('-');
@@ -132,6 +149,7 @@ const ShopContextProvider = (props) => {
             return;
         }
 
+        // Update local state immediately for better UX
         if (!colorData || !colorData.stock || colorData.stock[itemSize] === undefined) {
             cartData[itemId][size] = quantity;
             setCartItems(cartData);
@@ -140,17 +158,20 @@ const ShopContextProvider = (props) => {
 
             if (quantity > availableStock) {
                 toast.error(`Only ${availableStock} item(s) of ${product.name} (${itemColor}, ${itemSize}) available.`);
+                return; // Don't update if stock exceeded
             } else {
                 cartData[itemId][size] = quantity;
                 setCartItems(cartData);
             }
         }
 
+        // Update backend asynchronously without blocking UI
         if (token) {
             try {
                 await axios.post(backendUrl + '/api/cart/update', { itemId, size, quantity }, { headers: { token } });
             } catch (error) {
-                toast.error(error.response?.data?.message || 'Failed to update cart');
+                // Don't show error toast for quantity updates to avoid spam
+                console.error('Failed to update cart:', error);
             }
         }
     };
@@ -268,6 +289,7 @@ const ShopContextProvider = (props) => {
         addToCart,
         setCartItems,
         getCartCount,
+        getCartItemCount,
         updateQuantity,
         calculateCartTotals,
         navigate,

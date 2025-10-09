@@ -24,7 +24,7 @@ const OurPolicy = () => {
         <div>
           <img src={assets.quality_icon} className='w-12 m-auto mb-5' alt="" />
             <p className="font-semibold">Replacement Policy</p>
-    <p className="text-gray-500 text-sm">Free replacement within 7 days of delivery.</p>
+    <p className="text-gray-500 text-sm"> Exchange Product within 2 days of delivery.</p>
         </div>
         <div>
           <img src={assets.support_img} className='w-12 m-auto mb-5' alt="" />

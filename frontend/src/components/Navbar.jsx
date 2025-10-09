@@ -11,7 +11,7 @@ const Navbar = () => {
 
   const {
     setShowSearch,
-    getCartCount,
+    getCartItemCount,
     token,
     setToken,
     setCartItems,
@@ -98,7 +98,7 @@ const Navbar = () => {
           <Link to="/cart" className="relative">
             <img src={assets.cart_icon} className="w-5" alt="cart" />
             <span className="absolute right-[-6px] bottom-[-5px] w-4 h-4 bg-black text-white text-[10px] rounded-full flex items-center justify-center">
-              {getCartCount()}
+              {getCartItemCount()}
             </span>
           </Link>
 

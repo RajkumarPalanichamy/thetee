@@ -18,6 +18,8 @@ import Verify from './pages/Verify'
 import { FaPhone } from "react-icons/fa6"
 import { FaWhatsapp } from 'react-icons/fa'
 import Offers from './components/Offers'
+import { FaInstagram } from "react-icons/fa";
+
 
 const App = () => {
   const [loading, setLoading] = useState(true)
@@ -82,7 +84,7 @@ const App = () => {
       </div>
 
       {/* WhatsApp Floating Icon */}
-      <div className="fixed bottom-5 right-5 flex items-center justify-center z-50">
+      {/* <div className="fixed bottom-5 right-5 flex items-center justify-center z-50">
         <div className="absolute w-16 h-16 bg-green-500 rounded-full animate-ping opacity-75"></div>
         <a
           href="https://wa.me/919042942974?text=Hi,I’m interested in bulk orders,please provide details!"
@@ -93,10 +95,10 @@ const App = () => {
         >
           <FaWhatsapp size={30} className="text-white" />
         </a>
-      </div>
+      </div> */}
 
       {/* Phone Floating Icon */}
-      <div className="fixed bottom-24 right-5 flex items-center justify-center z-50">
+      {/* <div className="fixed bottom-24 right-5 flex items-center justify-center z-50">
         <div className="absolute w-16 h-16 bg-blue-600 rounded-full animate-ping opacity-75"></div>
         <a
           href="tel:+919042942974"
@@ -105,8 +107,23 @@ const App = () => {
         >
           <FaPhone size={30} className="text-white" />
         </a>
-      </div>
+      </div> */}
+
+      <div className="fixed bottom-24 right-5 flex items-center justify-center z-50">
+  <div className="absolute w-16 h-16 bg-pink-500 rounded-full animate-ping opacity-75"></div>
+  <a
+    href="https://www.instagram.com/the_tee_offcl?igsh=OGNhenFueTBtcW1n" // replace with your Instagram link
+    target="_blank"
+    rel="noopener noreferrer"
+    className="relative flex items-center justify-center bg-pink-500 p-3 rounded-full shadow-lg transition-transform hover:scale-110"
+    title="Visit our Instagram"
+  >
+    <FaInstagram size={30} className="text-white" />
+  </a>
+</div>
     </div>
+
+    
   )
 }
 

@@ -19,6 +19,7 @@ const CATEGORY_LABELS = [
   { value: 'Women', label: 'Women' },
   { value: 'Kids', label: 'Kids' },
   { value: 'Combo', label: 'Combo T-Shirts' },
+  { value: 'Customization', label: 'Customization' },
 ];
 
 const Collection = () => {

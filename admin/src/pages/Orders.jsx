@@ -29,9 +29,10 @@ const Orders = ({ token }) => {
         
         // Calculate payment method statistics
         const stats = ordersData.reduce((acc, order) => {
-          if (order.paymentMethod === 'COD') {
+          const paymentMethod = order.paymentMethod?.toLowerCase();
+          if (paymentMethod === 'cod') {
             acc.cod++
-          } else if (order.paymentMethod === 'Razorpay') {
+          } else if (paymentMethod === 'razorpay') {
             acc.razorpay++
           } else {
             acc.other++
@@ -67,7 +68,7 @@ const Orders = ({ token }) => {
     if (method === 'all') {
       setOrders(allOrders)
     } else {
-      const filtered = allOrders.filter(order => order.paymentMethod === method)
+      const filtered = allOrders.filter(order => order.paymentMethod?.toLowerCase() === method.toLowerCase())
       setOrders(filtered)
     }
   }
@@ -196,9 +197,9 @@ const Orders = ({ token }) => {
                 <div className='mt-3'>
                   <span className='text-sm font-medium'>Payment Method: </span>
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    order.paymentMethod === 'COD' 
+                    order.paymentMethod?.toLowerCase() === 'cod' 
                       ? 'bg-orange-100 text-orange-800 border border-orange-200' 
-                      : order.paymentMethod === 'Razorpay'
+                      : order.paymentMethod?.toLowerCase() === 'razorpay'
                       ? 'bg-blue-100 text-blue-800 border border-blue-200'
                       : 'bg-gray-100 text-gray-800 border border-gray-200'
                   }`}>

@@ -92,7 +92,7 @@ const placeOrder = async (req,res) => {
 const placeOrderStripe = async (req,res) => {
     try {
         
-        const { userId, items, amount, address} = req.body
+        const { userId, items, amount, address, paymentMethod} = req.body
         const { origin } = req.headers;
 
         const orderData = {
@@ -100,7 +100,7 @@ const placeOrderStripe = async (req,res) => {
             items,
             address,
             amount,
-            paymentMethod:"Stripe",
+            paymentMethod: paymentMethod || "Stripe",
             payment:false,
             date: Date.now()
         }
@@ -206,14 +206,14 @@ const placeOrderRazorpay = async (req,res) => {
             return res.json({ success: false, message: "Razorpay is not configured. Please contact administrator." });
         }
         
-        const { userId, items, amount, address} = req.body
+        const { userId, items, amount, address, paymentMethod} = req.body
 
         const orderData = {
             userId,
             items,
             address,
             amount,
-            paymentMethod:"Razorpay",
+            paymentMethod: paymentMethod || "Razorpay",
             payment:false,
             date: Date.now()
         }
@@ -364,8 +364,7 @@ const updateStatus = async (req,res) => {
 // Cash on Delivery endpoint
 const placeOrderCOD = async (req, res) => {
     try {
-        const { address, items, amount, paymentMethod } = req.body;
-        const userId = req.user.id;
+        const { address, items, amount, paymentMethod, userId } = req.body;
 
         // Update stock for each item
         for (const item of items) {

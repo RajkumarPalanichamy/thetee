@@ -168,7 +168,8 @@ useEffect(() => {
             let orderData = {
                 address: formData,
                 items: orderItems,
-                amount: (cartSummary.total + shippingFee)
+                amount: (cartSummary.total + shippingFee),
+                paymentMethod: method
             }
 
             // Handle payment based on selected method

@@ -152,7 +152,7 @@ const deleteFromCart = async (req, res) => {
 // clear the entire cart
 const clearCart = async (req, res) => {
     try {
-        const userId = req.userId;
+        const userId = req.body.userId;
         await userModel.findByIdAndUpdate(userId, { cartData: {} });
         res.json({ success: true, message: "Cart cleared" });
     } catch (error) {

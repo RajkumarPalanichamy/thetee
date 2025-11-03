@@ -361,6 +361,24 @@ const updateStatus = async (req,res) => {
     }
 }
 
+// delete order from Admin Panel
+const deleteOrder = async (req,res) => {
+    try {
+        
+        const { orderId } = req.body
+
+        const order = await orderModel.findByIdAndDelete(orderId)
+        if (!order) {
+            return res.json({success:false,message:'Order not found'})
+        }
+        res.json({success:true,message:'Order Deleted Successfully'})
+
+    } catch (error) {
+        console.log(error)
+        res.json({success:false,message:error.message})
+    }
+}
+
 // Cash on Delivery endpoint
 const placeOrderCOD = async (req, res) => {
     try {
@@ -421,4 +439,4 @@ const placeOrderCOD = async (req, res) => {
     }
 }
 
-export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, placeOrderCOD, allOrders, userOrders, updateStatus}
+export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, placeOrderCOD, allOrders, userOrders, updateStatus, deleteOrder}

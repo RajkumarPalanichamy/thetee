@@ -109,7 +109,7 @@ const App = () => {
         </a>
       </div> */}
 
-      <div className="fixed bottom-24 right-5 flex items-center justify-center z-50">
+      <div className="fixed bottom-5 sm:bottom-6 right-5 flex items-center justify-center z-50">
   <div className="absolute w-16 h-16 bg-pink-500 rounded-full animate-ping opacity-75"></div>
   <a
     href="https://www.instagram.com/the_tee_offcl?igsh=OGNhenFueTBtcW1n" // replace with your Instagram link

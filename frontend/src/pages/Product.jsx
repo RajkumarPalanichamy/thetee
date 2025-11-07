@@ -404,21 +404,47 @@ const Product = () => {
                 </div>
               </div>
               
-              <button
-                onClick={() => {
-                  // Add Combo7 selections to cart - transform data to match expected format
-                  const combo7Data = combo7Selections.map(sel => ({
-                    color: sel.color,
-                    size: combo7Size
-                  }));
-                  addToCart(productData._id, combo7Data, 'Combo7');
-                  navigate('/cart');
-                }}
-                disabled={!isCombo7Valid}
-                className="mt-6 w-full px-5 py-4 bg-black text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-900 transition-colors duration-200 touch-manipulation min-h-[44px]"
-              >
-                Add to Cart
-              </button>
+              <div className="mt-6 flex gap-3 flex-col sm:flex-row">
+                <button
+                  onClick={() => {
+                    // Add Combo7 selections to cart - transform data to match expected format
+                    const combo7Data = combo7Selections.map(sel => ({
+                      color: sel.color,
+                      size: combo7Size
+                    }));
+                    addToCart(productData._id, combo7Data, 'Combo7');
+                    navigate('/cart');
+                  }}
+                  disabled={!isCombo7Valid}
+                  className="w-full px-5 py-4 bg-black text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-900 transition-colors duration-200 touch-manipulation min-h-[44px]"
+                >
+                  Add to Cart
+                </button>
+                <button
+                  onClick={() => {
+                    if (!isCombo7Valid) {
+                      return;
+                    }
+                    // Store Combo7 product info for buy now flow
+                    const combo7Data = combo7Selections.map(sel => ({
+                      color: sel.color,
+                      size: combo7Size
+                    }));
+                    const buyNowData = {
+                      productId: productData._id,
+                      combo7Data,
+                      quantity: 1
+                    };
+                    localStorage.setItem('buyNowData', JSON.stringify(buyNowData));
+                    localStorage.setItem('isGuestCheckout', 'true');
+                    navigate('/place-order');
+                  }}
+                  disabled={!isCombo7Valid}
+                  className="w-full px-5 py-4 bg-blue-600 text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 touch-manipulation min-h-[44px]"
+                >
+                  Buy Now
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -522,15 +548,37 @@ const Product = () => {
                 </div>
               )}
 
-              <button
-                onClick={() => {
-                  addToCart(productData._id, size, selectedColor);
-                  navigate('/cart');
-                }}
-                disabled={!size || isCurrentSizeOutOfStock}
-                className='mt-4 w-full sm:w-auto px-5 py-4 bg-black text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-900 transition-colors duration-200 touch-manipulation min-h-[44px]'>
-                Add to Cart
-              </button>
+              <div className='mt-4 flex gap-3 flex-col sm:flex-row'>
+                <button
+                  onClick={() => {
+                    addToCart(productData._id, size, selectedColor);
+                    navigate('/cart');
+                  }}
+                  disabled={!size || isCurrentSizeOutOfStock}
+                  className='w-full sm:w-auto px-5 py-4 bg-black text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-900 transition-colors duration-200 touch-manipulation min-h-[44px]'>
+                  Add to Cart
+                </button>
+                <button
+                  onClick={() => {
+                    if (!size || isCurrentSizeOutOfStock) {
+                      return;
+                    }
+                    // Store product info for buy now flow
+                    const buyNowData = {
+                      productId: productData._id,
+                      size,
+                      color: selectedColor,
+                      quantity: 1
+                    };
+                    localStorage.setItem('buyNowData', JSON.stringify(buyNowData));
+                    localStorage.setItem('isGuestCheckout', 'true');
+                    navigate('/place-order');
+                  }}
+                  disabled={!size || isCurrentSizeOutOfStock}
+                  className='w-full sm:w-auto px-5 py-4 bg-blue-600 text-white rounded-md text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 touch-manipulation min-h-[44px]'>
+                  Buy Now
+                </button>
+              </div>
             </>
           )}
         </div>

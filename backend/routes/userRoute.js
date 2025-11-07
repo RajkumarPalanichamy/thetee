@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerUser, loginUser, adminLogin } from '../controllers/userController.js';
+import { registerUser, loginUser, adminLogin, guestCheckout } from '../controllers/userController.js';
 import authUser from '../middleware/auth.js';
 
 const userRouter = express.Router();
@@ -7,5 +7,6 @@ const userRouter = express.Router();
 userRouter.post('/register', registerUser)
 userRouter.post('/login', loginUser)
 userRouter.post('/adminlogin', adminLogin)
+userRouter.post('/guest-checkout', guestCheckout)
 
 export default userRouter;

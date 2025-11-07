@@ -439,4 +439,184 @@ const placeOrderCOD = async (req, res) => {
     }
 }
 
-export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, placeOrderCOD, allOrders, userOrders, updateStatus, deleteOrder}
+// Guest Order - Razorpay (no auth required)
+const placeGuestOrderRazorpay = async (req, res) => {
+    try {
+        // Check if Razorpay is configured
+        if (!razorpayInstance) {
+            return res.json({ success: false, message: "Razorpay is not configured. Please contact administrator." });
+        }
+        
+        const { items, amount, address, paymentMethod } = req.body;
+
+        const orderData = {
+            userId: "guest",
+            items,
+            address,
+            amount,
+            paymentMethod: paymentMethod || "Razorpay",
+            payment: false,
+            date: Date.now(),
+            isGuest: true
+        }
+
+        const newOrder = new orderModel(orderData)
+        await newOrder.save()
+
+        const options = {
+            amount: amount * 100,
+            currency: currency.toUpperCase(),
+            receipt: newOrder._id.toString()
+        }
+
+        await razorpayInstance.orders.create(options, (error, order) => {
+            if (error) {
+                console.log(error)
+                return res.json({ success: false, message: error })
+            }
+            res.json({ success: true, order })
+        })
+
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+// Guest Order - Verify Razorpay (no auth required)
+const verifyGuestRazorpay = async (req, res) => {
+    try {
+        // Check if Razorpay is configured
+        if (!razorpayInstance) {
+            return res.json({ success: false, message: "Razorpay is not configured. Please contact administrator." });
+        }
+
+        const { razorpay_order_id } = req.body
+        console.log('Verify Guest Razorpay: Received orderId:', razorpay_order_id);
+
+        const orderInfo = await razorpayInstance.orders.fetch(razorpay_order_id)
+        if (orderInfo.status === 'paid') {
+            // Get the order details using the receipt (which is the order ID)
+            const order = await orderModel.findByIdAndUpdate(orderInfo.receipt, { payment: true });
+
+            if (order) {
+                console.log('Verify Guest Razorpay: Found order and updated payment status:', order._id);
+                console.log('Verify Guest Razorpay: Items in order:', order.items);
+                // Reduce stock for each item in the order
+                for (const item of order.items) {
+                    console.log('Verify Guest Razorpay: Processing item:', item);
+                    const product = await productModel.findById(item._id);
+                    if (product) {
+                        // Parse size and color from the combined format (e.g., "S-black")
+                        const [size, color] = item.size.split('-');
+                        console.log('Parsed size:', size, 'color:', color);
+                        
+                        const colorData = product.colors.find(c => c.name === color);
+                        if (colorData) {
+                            const currentStock = colorData.stock.get(size);
+                            if (currentStock !== undefined) {
+                                console.log(`Current stock for ${size}-${color}:`, currentStock);
+                                console.log(`Attempting to update stock for product ${item._id}, color ${color}, size ${size}, quantity ${item.quantity}`);
+                                
+                                // Reduce stock using findOneAndUpdate with $inc
+                                const updateResult = await productModel.findOneAndUpdate(
+                                    { _id: item._id, "colors.name": color },
+                                    { $inc: { [`colors.$.stock.${size}`]: -item.quantity } },
+                                    { new: true, runValidators: true }
+                                );
+
+                                console.log('findOneAndUpdate result:', updateResult);
+
+                                if (!updateResult) {
+                                    console.error(`Failed to update stock for product ${item._id} in verifyGuestRazorpay`);
+                                }
+                            } else {
+                                console.error(`No stock found for size ${size} and color ${color}`);
+                            }
+                        } else {
+                            console.error(`Color ${color} not found in product ${item._id}`);
+                        }
+                    }
+                }
+                // Fetch and log the updated product data after stock reduction (for verification)
+                const updatedProduct = await productModel.findById(order.items[0]._id).lean();
+                console.log('Backend: Product stock after Guest Razorpay order:', updatedProduct.colors.map(color => ({ name: color.name, stock: color.stock instanceof Map ? Object.fromEntries(color.stock) : color.stock })));
+            } else {
+                console.log('Verify Guest Razorpay: Order not found for receipt:', orderInfo.receipt);
+            }
+
+            // Don't update user cart for guest orders
+            res.json({ success: true, message: "Payment Successful" })
+        } else {
+            console.log('Verify Guest Razorpay: Payment not successful for order:', razorpay_order_id);
+            res.json({ success: false, message: 'Payment Failed' });
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+// Guest Order - COD (no auth required)
+const placeGuestOrderCOD = async (req, res) => {
+    try {
+        const { address, items, amount, paymentMethod } = req.body;
+
+        // Update stock for each item
+        for (const item of items) {
+            const product = await productModel.findById(item._id);
+            if (!product) {
+                return res.json({ success: false, message: `Product ${item._id} not found` });
+            }
+
+            // Parse size and color from the combined format (e.g., "S-black")
+            const [size, color] = item.size.split('-');
+            const colorData = product.colors.find(c => c.name === color);
+            if (!colorData) {
+                return res.json({ success: false, message: `Color ${color} not found for product ${item._id}` });
+            }
+
+            const currentStock = colorData.stock.get(size);
+            if (!currentStock || currentStock < item.quantity) {
+                return res.json({ success: false, message: `Not enough stock for ${item.name} in size ${size} and color ${color}` });
+            }
+
+            // Update stock using findOneAndUpdate with $inc
+            const updateResult = await productModel.findOneAndUpdate(
+                { _id: item._id, "colors.name": color },
+                { $inc: { [`colors.$.stock.${size}`]: -item.quantity } },
+                { new: true, runValidators: true }
+            );
+
+            if (!updateResult) {
+                console.error(`Failed to update stock for product ${item._id}`);
+                return res.json({ success: false, message: `Failed to update stock for product ${item.name}` });
+            }
+        }
+
+        const orderData = {
+            userId: "guest",
+            items,
+            address,
+            amount,
+            paymentMethod: paymentMethod || "COD",
+            payment: true, // COD is considered paid when order is placed
+            date: Date.now(),
+            isGuest: true
+        }
+
+        const order = new orderModel(orderData)
+        await order.save()
+
+        // Don't update user cart for guest orders
+
+        res.json({ success: true, message: "Guest COD Order Placed Successfully", order })
+
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, placeOrderCOD, placeGuestOrderRazorpay, placeGuestOrderCOD, verifyGuestRazorpay, allOrders, userOrders, updateStatus, deleteOrder}

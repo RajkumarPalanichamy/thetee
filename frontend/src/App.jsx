@@ -9,6 +9,8 @@ import Cart from './pages/Cart'
 import Login from './pages/Login'
 import PlaceOrder from './pages/PlaceOrder'
 import Orders from './pages/Orders'
+import GuestCheckout from './pages/GuestCheckout'
+import Confirmation from './pages/Confirmation'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
@@ -76,9 +78,11 @@ const App = () => {
           <Route path='/product/:productId' element={<Product />} />
           <Route path='/cart' element={<Cart />} />
           <Route path='/login' element={<Login />} />
+          <Route path='/guest-checkout' element={<GuestCheckout />} />
           <Route path='/place-order' element={<PlaceOrder />} />
           <Route path='/orders' element={<Orders />} />
           <Route path='/verify' element={<Verify />} />
+          <Route path='/confirmation' element={<Confirmation />} />
         </Routes>
         <Footer />
       </div>

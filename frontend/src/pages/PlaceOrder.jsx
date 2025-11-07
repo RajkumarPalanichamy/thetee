@@ -52,6 +52,8 @@ const PlaceOrder = () => {
         phone: ''
     })
     const [isLoading, setIsLoading] = useState(true);
+    const [isGuestCheckout, setIsGuestCheckout] = useState(false);
+    const [buyNowData, setBuyNowData] = useState(null);
     const [cartSummary, setCartSummary] = useState({
         subtotal: 0,
         discountAmount: 0,
@@ -67,16 +69,62 @@ const PlaceOrder = () => {
             top: 0,
             behavior: 'smooth'
         });
+        
+        // Check if it's guest checkout
+        const guestCheckout = localStorage.getItem('isGuestCheckout') === 'true';
+        setIsGuestCheckout(guestCheckout);
+        
+        if (guestCheckout) {
+            // Get buy now data from localStorage
+            const storedBuyNowData = localStorage.getItem('buyNowData');
+            if (storedBuyNowData) {
+                const data = JSON.parse(storedBuyNowData);
+                setBuyNowData(data);
+                
+                // Calculate summary for guest checkout
+                const product = products.find(p => p._id === data.productId);
+                if (product) {
+                    let subtotal = 0;
+                    if (data.combo7Data) {
+                        // Combo7 pricing
+                        subtotal = 899; // Pick Any 4 at 899
+                    } else {
+                        subtotal = product.price * (data.quantity || 1);
+                    }
+                    setCartSummary({
+                        subtotal,
+                        discountAmount: 0,
+                        total: subtotal,
+                        discountApplied: false,
+                        discountMessage: ''
+                    });
+                }
+            } else {
+                toast.error('No product selected for Buy Now');
+                navigate('/');
+                return;
+            }
+        } else {
+            // Regular checkout - check if logged in
+            if (!token) {
+                toast.error('Please login to place an order');
+                navigate('/login');
+                return;
+            }
+        }
+        
         // Set loading to false after a short delay to ensure smooth transition
         const timer = setTimeout(() => {
             setIsLoading(false);
         }, 100);
         return () => clearTimeout(timer);
-    }, []);
+    }, [navigate, products, token]);
 
     useEffect(() => {
-        setCartSummary(calculateCartTotals());
-    }, [cartItems, products, calculateCartTotals]);
+        if (!isGuestCheckout) {
+            setCartSummary(calculateCartTotals());
+        }
+    }, [cartItems, products, calculateCartTotals, isGuestCheckout]);
 
     // Calculate shipping fee based on state
  // Calculate shipping fee (₹100 for all states)
@@ -100,7 +148,7 @@ useEffect(() => {
         setFormData(data => ({ ...data, [name]: value }));
     }
 
-    const initPay = (order) => {
+    const initPay = (order, isGuest = false) => {
         const options = {
             key: 'rzp_live_YzPG4x7vsi9pK0',
             amount: order.amount,
@@ -111,12 +159,34 @@ useEffect(() => {
             receipt: order.receipt,
             handler: async (response) => {
                 try {
-                    const { data } = await axios.post(backendUrl + '/api/order/verifyRazorpay', response, { headers: { token } })
+                    const verifyEndpoint = isGuest 
+                        ? '/api/order/guest/verifyRazorpay'
+                        : '/api/order/verifyRazorpay';
+                    
+                    const headers = isGuest ? {} : { headers: { token } };
+                    const { data } = await axios.post(backendUrl + verifyEndpoint, { razorpay_order_id: response.razorpay_order_id }, headers);
+                    
                     if (data.success) {
-                        setCartItems({})
+                        if (!isGuest) {
+                            setCartItems({});
+                        } else {
+                            // Clear guest checkout data
+                            localStorage.removeItem('buyNowData');
+                            localStorage.removeItem('isGuestCheckout');
+                        }
                         window.dispatchEvent(new Event('orderPlaced'));
                         toast.success("Order Placed!");
-                        navigate('/orders')
+                        
+                        // Store order details for confirmation page
+                        const orderDetails = {
+                            orderId: response.razorpay_order_id,
+                            amount: cartSummary.total + shippingFee,
+                            paymentMethod: 'Razorpay',
+                            isGuest
+                        };
+                        localStorage.setItem('lastOrder', JSON.stringify(orderDetails));
+                        
+                        navigate('/confirmation', { state: { order: orderDetails } })
                     } else {
                         toast.error("Payment verification failed");
                     }
@@ -132,70 +202,165 @@ useEffect(() => {
     const onSubmitHandler = async (event) => {
         event.preventDefault()
 
-        if (!token) {
-            toast.error('Please login to place an order');
-            return;
-        }
-
-        if (Object.keys(cartItems).length === 0) {
-            toast.error("Your cart is empty. Please add items before placing an order.");
-            navigate('/cart');
-            return;
-        }
-
         // Validate country is India
         if (formData.country.toLowerCase() !== 'india') {
             toast.error('Sorry, we only deliver within India');
             return;
         }
 
-        try {
-            let orderItems = []
+        // Check if guest checkout or regular checkout
+        if (isGuestCheckout) {
+            // Guest checkout flow
+            if (!buyNowData) {
+                toast.error('No product selected for Buy Now');
+                navigate('/');
+                return;
+            }
 
-            for (const items in cartItems) {
-                for (const item in cartItems[items]) {
-                    if (cartItems[items][item] > 0) {
-                        const itemInfo = structuredClone(products.find(product => product._id === items))
-                        if (itemInfo) {
-                            itemInfo.size = item
-                            itemInfo.quantity = cartItems[items][item]
-                            orderItems.push(itemInfo)
+            try {
+                let orderItems = [];
+                const product = products.find(p => p._id === buyNowData.productId);
+                
+                if (!product) {
+                    toast.error('Product not found');
+                    return;
+                }
+
+                if (buyNowData.combo7Data) {
+                    // Handle Combo7
+                    buyNowData.combo7Data.forEach(comboItem => {
+                        const itemInfo = structuredClone(product);
+                        itemInfo.size = `${comboItem.size}-${comboItem.color}`;
+                        itemInfo.quantity = 1;
+                        orderItems.push(itemInfo);
+                    });
+                } else {
+                    // Handle regular product
+                    const itemInfo = structuredClone(product);
+                    itemInfo.size = `${buyNowData.size}-${buyNowData.color}`;
+                    itemInfo.quantity = buyNowData.quantity || 1;
+                    orderItems.push(itemInfo);
+                }
+
+                let orderData = {
+                    address: formData,
+                    items: orderItems,
+                    amount: (cartSummary.total + shippingFee),
+                    paymentMethod: method
+                }
+
+                // Handle payment based on selected method
+                if (method === 'razorpay') {
+                    const responseRazorpay = await axios.post(backendUrl + '/api/order/guest/razorpay', orderData);
+                    if (responseRazorpay.data.success) {
+                        window.dispatchEvent(new Event('orderPlaced'));
+                        initPay(responseRazorpay.data.order, true);
+                    } else {
+                        toast.error(responseRazorpay.data.message || "Failed to initiate Razorpay order")
+                    }
+                } else if (method === 'cod') {
+                    // Cash on Delivery - create order directly
+                    const responseCOD = await axios.post(backendUrl + '/api/order/guest/cod', orderData);
+                    if (responseCOD.data.success) {
+                        // Clear guest checkout data
+                        localStorage.removeItem('buyNowData');
+                        localStorage.removeItem('isGuestCheckout');
+                        window.dispatchEvent(new Event('orderPlaced'));
+                        toast.success("Order Placed! You will pay cash on delivery.");
+                        
+                        // Store order details for confirmation page
+                        const orderDetails = {
+                            orderId: responseCOD.data.order?._id || 'N/A',
+                            amount: cartSummary.total + shippingFee,
+                            paymentMethod: 'Cash on Delivery',
+                            isGuest: true
+                        };
+                        localStorage.setItem('lastOrder', JSON.stringify(orderDetails));
+                        
+                        navigate('/confirmation', { state: { order: orderDetails } })
+                    } else {
+                        toast.error(responseCOD.data.message || "Failed to place COD order")
+                    }
+                }
+            } catch (error) {
+                toast.error(error.message || "An error occurred while placing your order.")
+            }
+        } else {
+            // Regular checkout flow (requires login)
+            if (!token) {
+                toast.error('Please login to place an order');
+                navigate('/login');
+                return;
+            }
+
+            if (Object.keys(cartItems).length === 0) {
+                toast.error("Your cart is empty. Please add items before placing an order.");
+                navigate('/cart');
+                return;
+            }
+
+            try {
+                let orderItems = []
+
+                for (const items in cartItems) {
+                    for (const item in cartItems[items]) {
+                        if (cartItems[items][item] > 0) {
+                            const itemInfo = structuredClone(products.find(product => product._id === items))
+                            if (itemInfo) {
+                                itemInfo.size = item
+                                itemInfo.quantity = cartItems[items][item]
+                                orderItems.push(itemInfo)
+                            }
                         }
                     }
                 }
-            }
 
-            let orderData = {
-                address: formData,
-                items: orderItems,
-                amount: (cartSummary.total + shippingFee),
-                paymentMethod: method
-            }
-
-            // Handle payment based on selected method
-            if (method === 'razorpay') {
-                const responseRazorpay = await axios.post(backendUrl + '/api/order/razorpay', orderData, { headers: { token } })
-                if (responseRazorpay.data.success) {
-                    window.dispatchEvent(new Event('orderPlaced'));
-                    initPay(responseRazorpay.data.order)
-                } else {
-                    toast.error(responseRazorpay.data.message || "Failed to initiate Razorpay order")
+                let orderData = {
+                    address: formData,
+                    items: orderItems,
+                    amount: (cartSummary.total + shippingFee),
+                    paymentMethod: method
                 }
-            } else if (method === 'cod') {
-                // Cash on Delivery - create order directly
-                const responseCOD = await axios.post(backendUrl + '/api/order/cod', orderData, { headers: { token } })
-                if (responseCOD.data.success) {
-                    setCartItems({})
-                    window.dispatchEvent(new Event('orderPlaced'));
-                    toast.success("Order Placed! You will pay cash on delivery.");
-                    navigate('/orders')
-                } else {
-                    toast.error(responseCOD.data.message || "Failed to place COD order")
-                }
-            }
 
-        } catch (error) {
-            toast.error(error.message || "An error occurred while placing your order.")
+                // Handle payment based on selected method
+                if (method === 'razorpay') {
+                    const responseRazorpay = await axios.post(backendUrl + '/api/order/razorpay', orderData, { headers: { token } })
+                    if (responseRazorpay.data.success) {
+                        window.dispatchEvent(new Event('orderPlaced'));
+                        initPay(responseRazorpay.data.order, false)
+                    } else {
+                        toast.error(responseRazorpay.data.message || "Failed to initiate Razorpay order")
+                    }
+                } else if (method === 'cod') {
+                    // Cash on Delivery - create order directly
+                    const responseCOD = await axios.post(backendUrl + '/api/order/cod', orderData, { headers: { token } })
+                    if (responseCOD.data.success) {
+                        setCartItems({})
+                        window.dispatchEvent(new Event('orderPlaced'));
+                        toast.success("Order Placed! You will pay cash on delivery.");
+                        
+                        // Store order details for confirmation page
+                        const isNewUser = localStorage.getItem('isNewUser') === 'true';
+                        if (isNewUser) {
+                            localStorage.removeItem('isNewUser');
+                        }
+                        const orderDetails = {
+                            orderId: responseCOD.data.order?._id || 'N/A',
+                            amount: cartSummary.total + shippingFee,
+                            paymentMethod: 'Cash on Delivery',
+                            isNewUser
+                        };
+                        localStorage.setItem('lastOrder', JSON.stringify(orderDetails));
+                        
+                        navigate('/confirmation', { state: { order: orderDetails } })
+                    } else {
+                        toast.error(responseCOD.data.message || "Failed to place COD order")
+                    }
+                }
+
+            } catch (error) {
+                toast.error(error.message || "An error occurred while placing your order.")
+            }
         }
     }
 

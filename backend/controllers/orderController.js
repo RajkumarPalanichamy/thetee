@@ -507,8 +507,20 @@ const verifyGuestRazorpay = async (req, res) => {
                     console.log('Verify Guest Razorpay: Processing item:', item);
                     const product = await productModel.findById(item._id);
                     if (product) {
-                        // Parse size and color from the combined format (e.g., "S-black")
-                        const [size, color] = item.size.split('-');
+                        // Handle both formats: separate size/color or combined "size-color"
+                        let size, color;
+                        if (item.size && item.color) {
+                            // Separate fields
+                            size = item.size;
+                            color = item.color;
+                        } else if (item.size && item.size.includes('-')) {
+                            // Combined format (e.g., "S-black")
+                            [size, color] = item.size.split('-');
+                        } else {
+                            console.error(`Invalid item format for product ${item._id}`);
+                            continue;
+                        }
+                        
                         console.log('Parsed size:', size, 'color:', color);
                         
                         const colorData = product.colors.find(c => c.name === color);
@@ -570,8 +582,19 @@ const placeGuestOrderCOD = async (req, res) => {
                 return res.json({ success: false, message: `Product ${item._id} not found` });
             }
 
-            // Parse size and color from the combined format (e.g., "S-black")
-            const [size, color] = item.size.split('-');
+            // Handle both formats: separate size/color or combined "size-color"
+            let size, color;
+            if (item.size && item.color) {
+                // Separate fields
+                size = item.size;
+                color = item.color;
+            } else if (item.size && item.size.includes('-')) {
+                // Combined format (e.g., "S-black")
+                [size, color] = item.size.split('-');
+            } else {
+                return res.json({ success: false, message: `Invalid item format for product ${item._id}` });
+            }
+
             const colorData = product.colors.find(c => c.name === color);
             if (!colorData) {
                 return res.json({ success: false, message: `Color ${color} not found for product ${item._id}` });

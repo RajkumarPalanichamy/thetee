@@ -77,33 +77,13 @@ const PlaceOrder = () => {
         if (guestCheckout) {
             // Get buy now data from localStorage
             const storedBuyNowData = localStorage.getItem('buyNowData');
-            if (storedBuyNowData) {
-                const data = JSON.parse(storedBuyNowData);
-                setBuyNowData(data);
-                
-                // Calculate summary for guest checkout
-                const product = products.find(p => p._id === data.productId);
-                if (product) {
-                    let subtotal = 0;
-                    if (data.combo7Data) {
-                        // Combo7 pricing
-                        subtotal = 899; // Pick Any 4 at 899
-                    } else {
-                        subtotal = product.price * (data.quantity || 1);
-                    }
-                    setCartSummary({
-                        subtotal,
-                        discountAmount: 0,
-                        total: subtotal,
-                        discountApplied: false,
-                        discountMessage: ''
-                    });
-                }
-            } else {
+            if (!storedBuyNowData) {
                 toast.error('No product selected for Buy Now');
                 navigate('/');
                 return;
             }
+            const data = JSON.parse(storedBuyNowData);
+            setBuyNowData(data);
         } else {
             // Regular checkout - check if logged in
             if (!token) {
@@ -118,13 +98,40 @@ const PlaceOrder = () => {
             setIsLoading(false);
         }, 100);
         return () => clearTimeout(timer);
-    }, [navigate, products, token]);
+    }, [navigate, token]);
 
+    // Calculate cart summary for guest checkout when products are loaded
     useEffect(() => {
-        if (!isGuestCheckout) {
+        if (isGuestCheckout && buyNowData && products.length > 0) {
+            const product = products.find(p => p._id === buyNowData.productId);
+            if (product) {
+                let subtotal = 0;
+                if (buyNowData.combo7Data && Array.isArray(buyNowData.combo7Data)) {
+                    // Combo7 pricing - check if exactly 4 items
+                    const combo7Count = buyNowData.combo7Data.length;
+                    if (combo7Count === 4) {
+                        subtotal = 899; // Pick Any 4 at 899
+                    } else {
+                        // Use base price for each item if not exactly 4
+                        subtotal = combo7Count * product.price;
+                    }
+                } else {
+                    // Regular product pricing
+                    subtotal = product.price * (buyNowData.quantity || 1);
+                }
+                setCartSummary({
+                    subtotal,
+                    discountAmount: 0,
+                    total: subtotal,
+                    discountApplied: buyNowData.combo7Data && buyNowData.combo7Data.length === 4,
+                    discountMessage: buyNowData.combo7Data && buyNowData.combo7Data.length === 4 ? 'Pick Any 4 at ₹899 applied' : ''
+                });
+            }
+        } else if (!isGuestCheckout) {
+            // Regular checkout - use calculateCartTotals
             setCartSummary(calculateCartTotals());
         }
-    }, [cartItems, products, calculateCartTotals, isGuestCheckout]);
+    }, [isGuestCheckout, buyNowData, products, cartItems, calculateCartTotals]);
 
     // Calculate shipping fee based on state
  // Calculate shipping fee (₹100 for all states)
@@ -226,18 +233,20 @@ useEffect(() => {
                     return;
                 }
 
-                if (buyNowData.combo7Data) {
-                    // Handle Combo7
+                if (buyNowData.combo7Data && Array.isArray(buyNowData.combo7Data)) {
+                    // Handle Combo7 - create separate items for each color/size combination
                     buyNowData.combo7Data.forEach(comboItem => {
                         const itemInfo = structuredClone(product);
-                        itemInfo.size = `${comboItem.size}-${comboItem.color}`;
+                        itemInfo.size = comboItem.size; // Size only
+                        itemInfo.color = comboItem.color; // Color separately
                         itemInfo.quantity = 1;
                         orderItems.push(itemInfo);
                     });
                 } else {
                     // Handle regular product
                     const itemInfo = structuredClone(product);
-                    itemInfo.size = `${buyNowData.size}-${buyNowData.color}`;
+                    itemInfo.size = buyNowData.size; // Size only
+                    itemInfo.color = buyNowData.color; // Color separately
                     itemInfo.quantity = buyNowData.quantity || 1;
                     orderItems.push(itemInfo);
                 }
